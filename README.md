@@ -19,6 +19,8 @@ marketplace (US, UK, DE, IT, FR) without opening, focusing or reloading any tab.
 
 ## Development
 
+Requires Node 20 or later (only for the tests and formatting; the extension itself needs no build).
+
 - `npm install && npm test` runs the parser and URL tests.
 - `npm run format` formats JS, CSS and HTML with Prettier; `npm run format:check` verifies.
 - After editing, click the reload icon on the extension card in `chrome://extensions`.
