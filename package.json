@@ -1,0 +1,15 @@
+{
+  "name": "amazon-account-detector",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "format": "prettier --write \"**/*.{js,css,html}\"",
+    "format:check": "prettier --check \"**/*.{js,css,html}\""
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0",
+    "prettier": "3.9.10"
+  }
+}

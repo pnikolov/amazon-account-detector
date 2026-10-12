@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <label for="marketplace">Marketplace</label>
+      <select id="marketplace"></select>
+    </header>
+
+    <main id="card" data-status="empty" aria-live="polite">
+      <div class="row">
+        <span class="dot" aria-hidden="true"></span>
+        <strong id="status">Checking…</strong>
+      </div>
+      <div id="email" class="email" hidden></div>
+      <div id="name" class="muted" hidden></div>
+    </main>
+
+    <footer>
+      <span id="freshness" class="muted"></span>
+      <button id="refresh" type="button">Refresh</button>
+    </footer>
+    <p id="warning" class="warning" hidden></p>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
