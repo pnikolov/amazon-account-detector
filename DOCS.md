@@ -70,9 +70,6 @@ the active account, and the parser reads the name and email from there.
 - Detection depends on the markup of Amazon's sign-in page, which is not a
   public contract. If it changes, checks become inconclusive ("couldn't
   refresh") until the selectors in `src/parser.js` are updated.
-- The multi-account switcher page was **never served** in those checks, so the
-  parser does not try to read it. If Amazon does serve it, the check is
-  inconclusive ("couldn't refresh") rather than a guess at the active account.
 - Amazon may serve a captcha or an AWS WAF challenge page (HTTP 202, observed
   on `.co.uk` and `.fr` for cookieless requests) to background requests; this
   surfaces as "couldn't refresh", and the 15-minute cadence is deliberately gentle.
