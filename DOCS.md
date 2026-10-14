@@ -12,13 +12,53 @@ popup ──"check"──▶ service worker ──fetch(credentials: include)─
   └── storage.onChanged ◀── chrome.storage.local  (one key per marketplace)
 ```
 
-| File | Role |
-|------|------|
-| `src/marketplaces.js` | Marketplace table, sign-in URL builder, auth-cookie matching |
-| `src/background.js` | Runs checks, owns the cache, reacts to alarm / cookie / popup triggers |
-| `src/parser.js` | Pure `Document -> verdict` function; all Amazon-specific selectors |
-| `src/offscreen/` | Hosts `DOMParser`, which service workers do not have |
-| `src/popup/` | Renders cached state, freshness and warnings |
+### Sequence flow
+
+```
+ Popup                     Cache                Background                Amazon
+ (popup.js)                (storage.local)      (background.js)
+   │                          │                      │                       │
+   │  user picks a marketplace│                      │                       │
+   │                          │                      │                       │
+ 1 │── save choice ──────────▶│                      │                       │
+   │                          │                      │                       │
+ 2 │── read saved answer ────▶│                      │                       │
+   │◀───── saved answer ──────│                      │                       │
+   │  draw it                 │                      │                       │
+   │                          │                      │                       │
+ 3 │  show "Checking…"        │                      │                       │
+   │── "check, unless under 60 s old" ──────────────▶│                       │
+   │                          │                      │                       │
+   │                          │◀── read answer ──────│                       │
+   │                          │                      │                       │
+   │              ┌───────────┴──────────────────────┴───────────────────────┤
+   │              │ 4a. saved answer under 60 s old                          │
+   │              └───────────┬──────────────────────┬───────────────────────┤
+   │◀─────────────────────────────────── "done" ─────│                       │
+   │                          │                      │                       │
+   │              ┌───────────┴──────────────────────┴───────────────────────┤
+   │              │ 4b. older (or cookies changed)                           │
+   │              └───────────┬──────────────────────┬───────────────────────┤
+   │                          │                      │── fetch sign-in page ▶│
+   │                          │                      │◀────── HTML ──────────│
+   │                          │                      │  parse (offscreen)    │
+   │                          │◀── save new answer ──│                       │
+ 5 │◀── "answer changed" ─────│                      │                       │
+   │  redraw with new answer  │                      │                       │
+   │◀─────────────────────────────────── "done" ─────│                       │
+   │                          │                      │                       │
+   │  hide "Checking…",       │                      │                       │
+   │  enable Refresh          │                      │                       │
+   ▼                          ▼                      ▼                       ▼
+```
+
+| File                  | Role                                                                   |
+| --------------------- | ---------------------------------------------------------------------- |
+| `src/marketplaces.js` | Marketplace table, sign-in URL builder, auth-cookie matching           |
+| `src/background.js`   | Runs checks, owns the cache, reacts to alarm / cookie / popup triggers |
+| `src/parser.js`       | Pure `Document -> verdict` function; all Amazon-specific selectors     |
+| `src/offscreen/`      | Hosts `DOMParser`, which service workers do not have                   |
+| `src/popup/`          | Renders cached state, freshness and warnings                           |
 
 ## Design decisions
 
@@ -27,11 +67,11 @@ worker can request Amazon's sign-in page with the user's cookies. Nothing
 visible happens: no tab, no window, no focus change, no content script injected
 into pages the user is reading. Alternatives considered:
 
-- *Hidden or pinned background tab*: works but is visible in the tab strip and
+- _Hidden or pinned background tab_: works but is visible in the tab strip and
   can steal focus; not implemented.
-- *Content script reading the nav bar*: only works when an Amazon tab is open,
+- _Content script reading the nav bar_: only works when an Amazon tab is open,
   and the nav shows a first name, not the email.
-- *Cookies alone*: tell you a session probably exists, not whose it is.
+- _Cookies alone_: tell you a session probably exists, not whose it is.
 
 **Parsing: offscreen document.** The HTML is parsed with `DOMParser` (inert:
 no scripts run, no subresources load) instead of regex. The offscreen document
@@ -44,11 +84,11 @@ The popup paints the cache first and revalidates behind it.
 
 **Three refresh triggers.**
 
-| Trigger | When | Why |
-|---------|------|-----|
-| Popup open / marketplace change | cache older than 60 s | the user is looking right now |
-| `chrome.alarms`, every 15 min | selected marketplace + any cached as signed in | catches server-side session expiry |
-| `chrome.cookies.onChanged` on auth cookies | immediately, debounced 1.5 s | catches logout, login and account switch |
+| Trigger                                    | When                                           | Why                                      |
+| ------------------------------------------ | ---------------------------------------------- | ---------------------------------------- |
+| Popup open / marketplace change            | cache older than 60 s                          | the user is looking right now            |
+| `chrome.alarms`, every 15 min              | selected marketplace + any cached as signed in | catches server-side session expiry       |
+| `chrome.cookies.onChanged` on auth cookies | immediately, debounced 1.5 s                   | catches logout, login and account switch |
 
 **Not misleading the user.** A failed or inconclusive check (network error,
 captcha, unrecognised page) never overwrites the verdict; it sets `lastError`
